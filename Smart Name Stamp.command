@@ -83,7 +83,7 @@ prompt_input_path() {
   while true; do
     echo "请选择要处理的图片或照片文件夹：" >&2
     echo "  1. 最推荐：把图片/文件夹从 Finder 直接拖到这个窗口，然后按回车" >&2
-    echo "  2. 也可以粘贴完整路径，例如：/Users/kude/Downloads/航天照片" >&2
+    echo "  2. 也可以粘贴完整路径，例如：~/Pictures/待标注图片" >&2
     echo "  3. 如果你已经在 Finder 里选中了目标，直接按回车读取 Finder 当前选中项" >&2
     echo >&2
     IFS= read -r "?输入路径或拖入文件夹后按回车： " raw
