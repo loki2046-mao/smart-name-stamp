@@ -1,0 +1,114 @@
+#!/bin/sh
+set -eu
+
+APP="/Applications/SmartNameStamp.app"
+BIN="$APP/Contents/MacOS/SmartNameStamp"
+DIRECT="/Applications/SmartNameStamp-Intel-Direct.command"
+
+if [ ! -d "$APP" ]; then
+  exit 0
+fi
+
+/usr/bin/chmod -R u+rwX,go+rX "$APP" 2>/dev/null || true
+/bin/chmod +x "$BIN" 2>/dev/null || true
+
+/usr/bin/xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+/usr/bin/xattr -cr "$APP" 2>/dev/null || true
+
+# Re-seal the app on the target Mac. This avoids stale ad-hoc signatures
+# after copying/installing on stricter Sequoia systems.
+/usr/bin/codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+
+/bin/cat > "$DIRECT" <<'SCRIPT'
+#!/bin/zsh
+set -u
+
+LOG="$HOME/Desktop/SmartNameStamp-intel-direct.log"
+APP="/Applications/SmartNameStamp.app"
+BIN="$APP/Contents/MacOS/SmartNameStamp"
+
+{
+  echo "=== SmartNameStamp Intel direct launcher ==="
+  date
+  echo "macOS: $(sw_vers -productVersion 2>/dev/null || true)"
+  echo "Machine: $(uname -m)"
+  echo "App: $APP"
+  echo "Binary: $BIN"
+  echo
+} > "$LOG"
+
+if [[ ! -x "$BIN" ]]; then
+  echo "找不到可执行文件，或没有执行权限：$BIN" | tee -a "$LOG"
+  echo "请重新安装修复版 pkg。" | tee -a "$LOG"
+  read -r "?按回车退出..."
+  exit 1
+fi
+
+echo "[1/4] 修复权限 / quarantine / 签名..." | tee -a "$LOG"
+chmod -R u+rwX,go+rX "$APP" >> "$LOG" 2>&1 || true
+chmod +x "$BIN" >> "$LOG" 2>&1 || true
+xattr -dr com.apple.quarantine "$APP" >> "$LOG" 2>&1 || true
+xattr -cr "$APP" >> "$LOG" 2>&1 || true
+codesign --force --deep --sign - "$APP" >> "$LOG" 2>&1 || true
+
+echo "[2/4] 架构 / 签名检查..." | tee -a "$LOG"
+file "$BIN" >> "$LOG" 2>&1 || true
+lipo -archs "$BIN" >> "$LOG" 2>&1 || true
+codesign --verify --deep --strict --verbose=1 "$APP" >> "$LOG" 2>&1 || true
+spctl --assess --type execute --verbose=4 "$APP" >> "$LOG" 2>&1 || true
+
+echo "[3/4] 启动自检..." | tee -a "$LOG"
+"$BIN" --startup-check >> "$LOG" 2>&1 &
+CHECK_PID=$!
+CHECK_STATUS=""
+for _ in {1..20}; do
+  if kill -0 "$CHECK_PID" >/dev/null 2>&1; then
+    sleep 1
+  else
+    wait "$CHECK_PID"
+    CHECK_STATUS=$?
+    break
+  fi
+done
+if [[ -z "$CHECK_STATUS" ]]; then
+  echo "启动自检超过 20 秒仍未结束，先终止它。" | tee -a "$LOG"
+  kill "$CHECK_PID" >/dev/null 2>&1 || true
+  sleep 1
+  kill -9 "$CHECK_PID" >/dev/null 2>&1 || true
+  CHECK_STATUS=124
+fi
+echo "启动自检退出码：$CHECK_STATUS" | tee -a "$LOG"
+
+if [[ "$CHECK_STATUS" -ne 0 ]]; then
+  echo "启动自检失败。日志已写到：$LOG" | tee -a "$LOG"
+  read -r "?按回车退出..."
+  exit "$CHECK_STATUS"
+fi
+
+echo "[4/4] 直接启动 GUI..." | tee -a "$LOG"
+"$BIN" >> "$LOG" 2>&1 &
+GUI_PID=$!
+sleep 5
+if kill -0 "$GUI_PID" >/dev/null 2>&1; then
+  echo "GUI 进程已启动，PID=$GUI_PID。如果没有看到窗口，请把日志发回来：$LOG" | tee -a "$LOG"
+  echo
+  echo "日志已写到：$LOG"
+  echo "如果已经看到工具窗口，可以关闭这个终端窗口。"
+  read -r "?按回车退出..."
+  exit 0
+fi
+
+wait "$GUI_PID"
+RUN_STATUS=$?
+echo "GUI 5 秒内退出，退出码：$RUN_STATUS" | tee -a "$LOG"
+echo
+echo "日志已写到：$LOG"
+read -r "?按回车退出..."
+exit "$RUN_STATUS"
+SCRIPT
+
+/bin/chmod +x "$DIRECT" 2>/dev/null || true
+/usr/bin/xattr -dr com.apple.quarantine "$DIRECT" 2>/dev/null || true
+/usr/bin/xattr -cr "$DIRECT" 2>/dev/null || true
+
+exit 0

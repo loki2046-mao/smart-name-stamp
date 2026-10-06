@@ -1,0 +1,6 @@
+# Dependencies needed to BUILD the double-click app (Mac .app / Windows .exe).
+# End users do NOT need these; they only run the packaged app.
+Pillow>=10.0
+numpy>=1.26
+opencv-python-headless>=4.8,<5
+pyinstaller>=6.6

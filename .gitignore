@@ -1,0 +1,17 @@
+.DS_Store
+.venv/
+.venv-build/
+__pycache__/
+.pytest_cache/
+output/
+out/
+build/
+dist/
+*.pyc
+
+article/
+build-*/
+dist-*/
+release/
+.claude/
+*.log
