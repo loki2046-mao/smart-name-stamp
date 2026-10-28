@@ -164,3 +164,9 @@ python3 smart_name_stamp.py ./images ./output --recursive --contact-sheet
 ### 逐张微调
 
 点击「逐张预览与微调」打开图片列表，选择任意图片修改文字，按住文字并在目标位置松开以调整位置，点击「保存本张设置」。主窗口更改字号、字体等选项后，可以点击「使用主窗口样式」应用到本张，再保存。未保存的调整不参与导出；逐张设置仅在本次打开的工具会话中保留。重新生成已有输出需勾选覆盖同名文件。
+
+## 作者与相关作品
+
+由[赛博小熊猫 Loki](https://hiloki.ai/about)制作与维护。用 AI 做产品、做内容，把真实制作中的修改、取舍和方法留下来。
+
+[个人网站](https://hiloki.ai/) · [作品与制作记录](https://hiloki.ai/works) · [公众号文章](https://hiloki.ai/articles/) · [GitHub](https://github.com/loki2046-mao)
